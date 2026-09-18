@@ -489,6 +489,14 @@ def doctor():
     }
 
 
+def action_delay():
+    """Seconds to wait between actions so pages can settle. JIFFY_ACTION_DELAY."""
+    try:
+        return max(0.0, float(os.getenv("JIFFY_ACTION_DELAY", "1.5")))
+    except (TypeError, ValueError):
+        return 1.5
+
+
 def fingerprint(state):
     content = {k: state[k] for k in ("url", "text", "actions", "scroll")}
     return hashlib.sha256(json.dumps(content, sort_keys=True).encode()).hexdigest()
@@ -654,6 +662,7 @@ class Browser:
         if kind == "scroll":
             self.page.mouse.wheel(0, action["delta"])
             self.after_input = action
+            time.sleep(action_delay())
             return {"executed": action["id"]}
         node = action["node"]
         if type(node) is not int:
@@ -676,6 +685,7 @@ class Browser:
             element.click()
         self._adopt_new_tab(pages_before)
         self.after_input = action
+        time.sleep(action_delay())
         return {"executed": action["id"]}
 
     def _adopt_new_tab(self, pages_before):

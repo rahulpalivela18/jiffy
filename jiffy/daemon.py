@@ -134,6 +134,8 @@ def _run_once(body):
     skill = skill_from_path(body.get("skill")) if body.get("skill") else skill_for_url(url)
     if skill:
         log.info("using site skill for %s", url[:60])
+    if body.get("action_delay") is not None:
+        os.environ["JIFFY_ACTION_DELAY"] = str(body["action_delay"])
     with LOCK:
         _close_session()
         browser = _open_browser(

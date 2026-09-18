@@ -196,7 +196,8 @@ Every action is resolved from an observed node and re-checked for freshness, vis
 ## Env
 
 See `.env.example`. Required: `TYPESAFE_API_KEY`, `TEXT_MODEL_API_KEY`.
-Optional: `JIFFY_PROFILE`, `JIFFY_CDP_URL`, `JIFFY_USER_DATA_DIR`, `JIFFY_LOG`.
+Optional: `JIFFY_PROFILE`, `JIFFY_CDP_URL`, `JIFFY_USER_DATA_DIR`, `JIFFY_LOG`,
+`JIFFY_ACTION_DELAY` (seconds between actions, default 1.5).
 
 ## Personal facts (profile)
 

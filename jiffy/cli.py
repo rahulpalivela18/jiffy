@@ -148,6 +148,12 @@ def build_parser():
         default=os.getenv("JIFFY_SKILL") or None,
         help="Path to a site-skill markdown file (else skills/<host>.md is used).",
     )
+    parser.add_argument(
+        "--action-delay",
+        type=float,
+        default=float(os.getenv("JIFFY_ACTION_DELAY", "1.5")),
+        help="Seconds to wait between actions (default 1.5).",
+    )
     parser.add_argument("--max-steps", type=int, default=int(os.getenv("JIFFY_MAX_STEPS", MAX_STEPS)))
     parser.add_argument(
         "--confidence-floor",
@@ -309,6 +315,7 @@ def run_via_daemon(args, start_url, profile):
         "current_tab": args.current_tab,
         "tab_match": args.tab_match,
         "skill": args.skill,
+        "action_delay": args.action_delay,
     }
     final = _post_json(f"{DAEMON_URL}/run", body)
     from .log import get as get_logger
@@ -443,6 +450,7 @@ def main(argv=None):
         return 2
 
     start_url = resolve_start_url(args.goal, args.url)
+    os.environ["JIFFY_ACTION_DELAY"] = str(args.action_delay)
 
     if not os.getenv("TYPESAFE_API_KEY"):
         print("Missing TYPESAFE_API_KEY (see .env.example).", file=sys.stderr)
