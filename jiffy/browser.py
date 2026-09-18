@@ -659,6 +659,7 @@ class Browser:
         if type(node) is not int:
             raise ValueError("Invalid observed node")
         element = self._resolve(node)
+        pages_before = len(self.context.pages)
         if kind == "upload":
             if not file_path:
                 raise ValueError("No file configured for this UPLOAD target.")
@@ -673,8 +674,27 @@ class Browser:
             if not self.evaluate(HITTEST, action):
                 raise StalePage("Target changed or is covered. Observe again.")
             element.click()
+        self._adopt_new_tab(pages_before)
         self.after_input = action
         return {"executed": action["id"]}
+
+    def _adopt_new_tab(self, pages_before):
+        """If the action opened a tab, follow it. Many sites (LinkedIn Message,
+        Google results) open a new tab, and staying on the old page stalls."""
+        try:
+            pages = self.context.pages
+        except Exception:  # noqa: BLE001
+            return
+        if len(pages) <= pages_before:
+            return
+        self.page = pages[-1]
+        self._owns_page = True
+        self.page.set_default_timeout(8000)
+        try:
+            self.page.wait_for_load_state("load", timeout=10000)
+        except PWTimeout:
+            pass
+        log.info("action opened a new tab; switched to it")
 
     def _start_allow_clicker(self):
         """Background thread that clicks Chrome's Allow sheet while we connect."""
