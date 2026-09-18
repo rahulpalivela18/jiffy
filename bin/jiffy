@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# jiffy launcher - works without any pip install.
+#   ./bin/jiffy "your goal"
+#   ./bin/jiffy setup | doctor | login | stop | serve | run "goal"
+set -euo pipefail
+DIR="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$DIR"
+if [ ! -x .venv/bin/python ]; then
+  echo "No venv yet. Run:  ./start.sh" >&2
+  exit 1
+fi
+exec .venv/bin/python -m jiffy "$@"

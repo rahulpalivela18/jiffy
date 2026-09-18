@@ -1,0 +1,58 @@
+# jiffy profile - general facts about you, used only to fill fields correctly.
+# Nested sections are fine; retrieval flattens them into keys like "contact.email".
+# Never put passwords, OTP seeds, card numbers, or API keys here.
+
+identity:
+  name: Your Full Name
+  first_name: Your
+  last_name: Name
+  pronouns: they/them
+  nationality: Indian
+
+contact:
+  email: you@example.com
+  phone: "+91 00000 00000"
+  alt_phone: ""
+
+location:
+  city: Bengaluru
+  region: Karnataka
+  country: India
+  postal_code: "560001"
+  timezone: Asia/Kolkata
+
+links:
+  github: https://github.com/your-handle
+  linkedin: https://www.linkedin.com/in/your-handle
+  website: https://your-site.dev
+  x: ""
+
+work:
+  current_company: Your Company
+  current_title: Software Engineer
+  experience_years: "1"
+  notice_period: 30 days
+  work_authorization: Authorized to work in India
+  requires_sponsorship: "No"
+  expected_ctc: Negotiable
+
+education:
+  degree: B.Tech Computer Science
+  school: Your University
+  graduation_year: "2025"
+
+preferences:
+  remote: "Yes"
+  relocation: "Yes"
+  travel: "Occasionally"
+
+# Reusable free-text answers. Keys are for you; the model matches by meaning.
+answers:
+  why_this_role: One or two sentences about why this kind of role fits.
+  about_me: A short, factual self-introduction.
+  strengths: Two or three concrete strengths.
+
+# Optional: job-specific extras. Ignored for non-job goals.
+job:
+  resume: ~/Documents/resume.pdf
+  cover_letter: ""

@@ -1,0 +1,8 @@
+# Put your goal here (plain language). Lines starting with # are ignored.
+# Then run:  ./bin/jiffy run
+#
+# Examples:
+#   Open Gmail and summarize the first email
+#   Go to x.com and search virat kohli
+#   Apply to https://jobs.ashbyhq.com/acme/123 with my resume
+

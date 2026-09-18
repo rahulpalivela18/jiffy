@@ -1,0 +1,26 @@
+[project]
+name = "jiffy"
+version = "0.1.0"
+description = "A general Chrome agent. Jev decides, a cheap LLM writes text, code executes."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "playwright>=1.40.0",
+    "httpx>=0.27.0",
+    "python-dotenv>=1.0.0",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+jiffy = "jiffy.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["jiffy*"]
+
+[tool.setuptools.package-data]
+jiffy = ["snapshot.js"]
