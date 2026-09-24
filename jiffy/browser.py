@@ -316,6 +316,24 @@ def ensure_browser_endpoint(port=9333):
     return launch_automation_chrome(port=port)
 
 
+def _viewport_kwargs(headless):
+    """Use a full-height viewport so bottom-anchored UI is not clipped.
+
+    A fixed small viewport (1120x780) cut off LinkedIn's message composer and
+    its Send button. The page now lays out at a full desktop size regardless of
+    the physical window, so the whole composer is in-page and clickable.
+    Override with JIFFY_VIEWPORT=WIDTHxHEIGHT.
+    """
+    spec = (os.getenv("JIFFY_VIEWPORT") or "").strip().lower()
+    if "x" in spec:
+        try:
+            width, height = (int(part) for part in spec.split("x", 1))
+            return {"viewport": {"width": width, "height": height}}
+        except ValueError:
+            pass
+    return {"viewport": {"width": 1440, "height": 900}}
+
+
 def launch_dedicated_context(profile_dir=None, headless=False, channel=None):
     """Launch the jiffy Chrome with Playwright's persistent context.
 
@@ -337,7 +355,7 @@ def launch_dedicated_context(profile_dir=None, headless=False, channel=None):
     pw = sync_playwright().start()
     kwargs = {
         "headless": headless,
-        "viewport": {"width": 1120, "height": 780},
+        **_viewport_kwargs(headless),
         "ignore_default_args": ["--enable-automation"],
         "args": [
             "--no-first-run",
@@ -519,6 +537,8 @@ class Browser:
         launch_kwargs = {"headless": headless}
         if channel:
             launch_kwargs["channel"] = channel
+        if not headless:
+            launch_kwargs["args"] = ["--start-maximized"]
         self._persistent = bool(user_data_dir)
         self._cdp = bool(cdp_url)
         self._shared = False
@@ -549,7 +569,7 @@ class Browser:
             self.browser = None
             self.context = self._pw.chromium.launch_persistent_context(
                 user_data_dir,
-                viewport={"width": 1120, "height": 780},
+                **_viewport_kwargs(headless),
                 **launch_kwargs,
             )
             self.page = (
@@ -557,9 +577,7 @@ class Browser:
             )
         else:
             self.browser = self._pw.chromium.launch(**launch_kwargs)
-            self.context = self.browser.new_context(
-                viewport={"width": 1120, "height": 780}
-            )
+            self.context = self.browser.new_context(**_viewport_kwargs(headless))
             self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
         self.page.set_default_timeout(8000)
         self.after_input = None
