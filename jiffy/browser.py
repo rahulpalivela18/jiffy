@@ -317,12 +317,12 @@ def ensure_browser_endpoint(port=9333):
 
 
 def _viewport_kwargs(headless):
-    """Use a full-height viewport so bottom-anchored UI is not clipped.
+    """Match the page size to the real window and maximize it.
 
-    A fixed small viewport (1120x780) cut off LinkedIn's message composer and
-    its Send button. The page now lays out at a full desktop size regardless of
-    the physical window, so the whole composer is in-page and clickable.
-    Override with JIFFY_VIEWPORT=WIDTHxHEIGHT.
+    Setting a viewport taller than the physical window pushes bottom-anchored UI
+    (LinkedIn's message overlay and Send button) off-screen. Using the real
+    window size keeps page bottom == window bottom, so nothing is clipped.
+    Override with JIFFY_VIEWPORT=WIDTHxHEIGHT when a fixed size is required.
     """
     spec = (os.getenv("JIFFY_VIEWPORT") or "").strip().lower()
     if "x" in spec:
@@ -331,7 +331,9 @@ def _viewport_kwargs(headless):
             return {"viewport": {"width": width, "height": height}}
         except ValueError:
             pass
-    return {"viewport": {"width": 1440, "height": 900}}
+    if headless:
+        return {"viewport": {"width": 1440, "height": 900}}
+    return {"no_viewport": True}
 
 
 def launch_dedicated_context(profile_dir=None, headless=False, channel=None):
@@ -360,6 +362,7 @@ def launch_dedicated_context(profile_dir=None, headless=False, channel=None):
         "args": [
             "--no-first-run",
             "--no-default-browser-check",
+            "--start-maximized",
             "--disable-blink-features=AutomationControlled",
         ],
     }
