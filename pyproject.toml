@@ -24,3 +24,9 @@ include = ["jiffy*"]
 
 [tool.setuptools.package-data]
 jiffy = ["snapshot.js"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "BLE"]

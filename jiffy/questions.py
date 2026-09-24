@@ -40,4 +40,19 @@ Use a full https URL for the specific site the user names (e.g. "https://x.com" 
 If the task is a general search, or you are not confident which site, return {"url": null}.
 Never invent a URL for a site you do not know. No commentary, no credentials."""
 
+PLAN = """Convert the user's request into a precise plan for a browser agent.
+Return a JSON object with exactly these keys:
+  "start_url": best full https URL to begin at, or null,
+  "milestones": ordered list of concrete milestones in plain language,
+  "exact_values": object of literal strings the agent must use verbatim
+                  (messages, names, emails). Copy them exactly from the request,
+  "constraints": list of rules (e.g. "do not send until the text is verified"),
+  "done_when": list of visible conditions that mean the task is complete,
+  "never": list of things the agent must not do.
+Rules:
+- Keep milestones atomic and in order. One outcome per milestone.
+- Preserve the user's literal strings exactly; never paraphrase a message.
+- Do not invent personal data. If a needed value is absent, omit it.
+- No commentary, no markdown."""
+
 MAX_STEPS = 60

@@ -18,7 +18,6 @@ import os
 import signal
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -150,6 +149,7 @@ def _run_once(body):
             resume=body.get("resume"),
             profile=body.get("profile") or {},
             skill=skill,
+            plan=body.get("plan") or {},
             max_steps=int(body.get("max_steps") or MAX_STEPS),
             confidence_floor=float(body.get("confidence_floor") or 0.0),
         )
@@ -292,7 +292,7 @@ class Handler(BaseHTTPRequestHandler):
                 result = _observe(body)
             return self._send(200, result)
         except Exception as exc:  # noqa: BLE001 - report to caller
-            log.error("%s failed: %s", self.path, exc)
+            log.exception("%s failed", self.path)
             return self._send(500, {"error": str(exc)})
 
     def log_message(self, *_args):

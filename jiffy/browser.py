@@ -9,6 +9,7 @@ import base64
 import hashlib
 import json
 import os
+import shutil
 import socket
 import subprocess
 import threading
@@ -352,7 +353,7 @@ def launch_dedicated_context(profile_dir=None, headless=False, channel=None):
             kwargs["executable_path"] = executable
     try:
         context = pw.chromium.launch_persistent_context(str(profile_dir), **kwargs)
-    except Exception:
+    except Exception:  # noqa: BLE001 - fall back to bundled browser
         kwargs.pop("channel", None)
         kwargs.pop("executable_path", None)
         context = pw.chromium.launch_persistent_context(str(profile_dir), **kwargs)

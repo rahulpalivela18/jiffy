@@ -154,6 +154,11 @@ def build_parser():
         default=float(os.getenv("JIFFY_ACTION_DELAY", "1.5")),
         help="Seconds to wait between actions (default 1.5).",
     )
+    parser.add_argument(
+        "--no-plan",
+        action="store_true",
+        help="Skip compiling the request into a structured plan.",
+    )
     parser.add_argument("--max-steps", type=int, default=int(os.getenv("JIFFY_MAX_STEPS", MAX_STEPS)))
     parser.add_argument(
         "--confidence-floor",
@@ -303,13 +308,14 @@ def _print_new_steps(final, printed):
     return len(history)
 
 
-def run_via_daemon(args, start_url, profile):
+def run_via_daemon(args, start_url, profile, plan=None):
     """Run a goal through the daemon, pausing interactively when the agent is unsure."""
     body = {
         "goal": args.goal,
         "url": start_url,
         "resume": args.resume,
         "profile": profile,
+        "plan": plan or {},
         "max_steps": args.max_steps,
         "confidence_floor": args.confidence_floor,
         "current_tab": args.current_tab,
@@ -449,7 +455,19 @@ def main(argv=None):
             )
         return 2
 
-    start_url = resolve_start_url(args.goal, args.url)
+    plan = None
+    if not args.no_plan:
+        from .plan import compile_plan, plan_summary
+
+        plan = compile_plan(args.goal, args.url)
+        if plan:
+            print(plan_summary(plan), file=sys.stderr)
+    start_url = (
+        args.url
+        or url_from_goal(args.goal)
+        or (plan or {}).get("start_url")
+        or DEFAULT_START_URL
+    )
     os.environ["JIFFY_ACTION_DELAY"] = str(args.action_delay)
 
     if not os.getenv("TYPESAFE_API_KEY"):
@@ -518,7 +536,7 @@ def main(argv=None):
             print(f"daemon not ready: {health.get('error')}", file=sys.stderr)
             return 2
         log.info("using daemon at %s", DAEMON_URL)
-        return run_via_daemon(args, start_url, profile)
+        return run_via_daemon(args, start_url, profile, plan)
 
     log.info("goal: %s", args.goal)
     log.info("start url: %s", start_url)
@@ -553,6 +571,7 @@ def main(argv=None):
         resume=args.resume,
         profile=profile,
         skill=skill,
+        plan=plan or {},
         max_steps=args.max_steps,
         confidence_floor=args.confidence_floor,
     )

@@ -8,6 +8,7 @@ Ported from browser-use/jev-ultrafast (MIT) and adapted:
 import json
 import math
 import os
+import re
 import time
 from urllib.parse import urlparse
 
@@ -102,16 +103,24 @@ def action_space(actions):
     return elements, targets, controls
 
 
-def _instructions(goal, skill, *, rules, operation=None):
+def _instructions(goal, skill, *, rules, operation=None, plan=None, milestone_index=0):
     instructions = {"goal": goal, "rules": rules}
     if operation:
         instructions["operation"] = operation
     if skill:
         instructions["site_skill"] = skill
+    if plan:
+        from .plan import plan_state
+
+        state = plan_state(plan, milestone_index)
+        instructions["current_milestone"] = state["current"]
+        instructions["exact_values"] = state["exact_values"]
+        instructions["constraints"] = state["constraints"]
+        instructions["never"] = state["never"]
     return instructions
 
 
-def choose(state, goal, history, model=None, skill=None):
+def choose(state, goal, history, model=None, skill=None, plan=None, milestone_index=0):
     elements, targets, controls = action_space(state["actions"])
     labels = {
         "CLICK": "Click an element, button, menu option, autocomplete suggestion, or calendar day.",
@@ -129,7 +138,9 @@ def choose(state, goal, history, model=None, skill=None):
         "operation": {
             "type": "choice",
             "criteria": operations,
-            "instructions": _instructions(goal, skill, rules=NEXT_ACTION),
+            "instructions": _instructions(
+                goal, skill, rules=NEXT_ACTION, plan=plan, milestone_index=milestone_index
+            ),
         }
     }
     for operation, candidates in targets.items():
@@ -144,14 +155,25 @@ def choose(state, goal, history, model=None, skill=None):
                 for index, a in candidates.items()
             },
             "instructions": _instructions(
-                goal, skill, operation=operation, rules=[NEXT_ACTION, TARGET]
+                goal,
+                skill,
+                operation=operation,
+                rules=[NEXT_ACTION, TARGET],
+                plan=plan,
+                milestone_index=milestone_index,
             ),
         }
+    plan_block = None
+    if plan:
+        from .plan import plan_state
+
+        plan_block = plan_state(plan, milestone_index)
     body = {
         "model": model or os.environ.get("TYPESAFE_MODEL", "jev-latest"),
         "state": {
             "page": {k: state[k] for k in ("url", "title", "text")},
             "elements": elements,
+            "plan": plan_block,
             "recent_actions": [
                 {k: h.get(k) for k in ("action", "kind", "text", "page_changed")}
                 for h in history[-10:]
@@ -322,6 +344,43 @@ def _text_json(system_prompt, user_obj, max_tokens=256):
         return json.loads(result["choices"][0]["message"]["content"])
     except (ValueError, KeyError, TypeError, RuntimeError):
         return None
+
+
+def milestone_check(milestone, page, history, threshold=0.6):
+    """Ask Jev (Noul) whether a milestone is visibly complete."""
+    key = os.environ.get("TYPESAFE_API_KEY")
+    if not key:
+        return False
+    body = {
+        "model": os.environ.get("TYPESAFE_MODEL", "jev-latest"),
+        "state": {
+            "page": {k: page[k] for k in ("url", "title", "text")},
+            "recent_actions": [
+                {k: h.get(k) for k in ("action", "kind", "text", "page_changed")}
+                for h in history[-6:]
+            ],
+        },
+        "questions": {
+            "complete": {
+                "type": "noul",
+                "instructions": {
+                    "goal": f"Is this milestone visibly complete? {milestone}"
+                },
+            }
+        },
+    }
+    try:
+        result = post_json(TYPESAFE_URL, key, body)
+        answer = result["answers"]["complete"]
+    except (RuntimeError, KeyError, TypeError, ValueError):
+        return False
+    probability = answer.get("noul")
+    if probability is None:
+        probability = answer.get("probability")
+    try:
+        return float(probability) >= threshold
+    except (TypeError, ValueError):
+        return False
 
 
 def start_url_for_goal(goal):

@@ -25,7 +25,6 @@ from .browser import (
     _endpoint_for_port,
     _port_live,
     check_endpoint,
-    launch_automation_chrome,
 )
 
 ROOT = Path(__file__).resolve().parents[1]

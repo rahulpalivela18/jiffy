@@ -37,6 +37,7 @@ class Agent:
         resume=None,
         profile=None,
         skill=None,
+        plan=None,
         max_steps=MAX_STEPS,
         confidence_floor=0.0,
         verifier=None,
@@ -45,11 +46,13 @@ class Agent:
         task = goals.strip() if isinstance(goals, str) else "\n".join(goals).strip()
         if not task:
             raise ValueError("Supply a task")
-        plan = [task]
+        goal_list = [task]
         self.pending_text = None
         self.resume = resume
         self.profile = profile or {}
         self.skill = skill
+        self.plan = plan or {}
+        self.milestone_index = 0
         self.max_steps = max_steps
         self.confidence_floor = confidence_floor
         self.verifier = verifier
@@ -63,12 +66,12 @@ class Agent:
             raise
         self.state = dict(
             browser=self.browser,
-            goal="\n".join(plan),
+            goal="\n".join(goal_list),
             page=page,
             decision=None,
             history=[],
             status="ready",
-            plan=plan,
+            plan=goal_list,
             plan_index=0,
             decisions=[],
             text_calls=[],
@@ -87,7 +90,21 @@ class Agent:
         return {
             **{k: v for k, v in self.state.items() if k != "browser"},
             "elements": action_space(self.state["page"]["actions"])[0],
+            "milestone_index": self.milestone_index,
+            "milestones": self.plan.get("milestones") or [],
         }
+
+    def _advance_milestone(self, state):
+        """Ask Jev whether the current milestone is visibly complete; advance if so."""
+        milestones = self.plan.get("milestones") or []
+        if not milestones or self.milestone_index >= len(milestones):
+            return
+        from .model import milestone_check
+
+        current = milestones[self.milestone_index]
+        if milestone_check(current, state["page"], state["history"]):
+            self.milestone_index += 1
+            log.info("milestone done (%d/%d): %s", self.milestone_index, len(milestones), current)
 
     def _stop(self, status, reason):
         self.state["status"] = status
@@ -131,7 +148,12 @@ class Agent:
             if len(state["decisions"]) >= self.max_steps * 2:
                 raise ValueError("Reached the run's model-call budget")
             state["decision"] = choose(
-                state["page"], state["goal"], state["history"], skill=self.skill
+                state["page"],
+                state["goal"],
+                state["history"],
+                skill=self.skill,
+                plan=self.plan,
+                milestone_index=self.milestone_index,
             )
             state["decisions"].append(
                 {
@@ -269,6 +291,7 @@ class Agent:
                 url=state["page"]["url"],
                 elapsed_ms=state["elapsed_ms"],
             )
+            self._advance_milestone(state)
             record = state["history"][-1]
             log.info(
                 "step %d: %s %s -> %s | op_p=%s | target_p=%s | conf=%.2f | %dms%s",
