@@ -4,6 +4,8 @@ Short, plain-text instructions for how a specific website works. Jev reads the
 skill for the current host on every decision, so stateful flows (mentions,
 compose windows, multi-step forms) become reliable.
 
+See `../ROADMAP.md` for the list of sites still to add.
+
 ## How they are found
 
 For a run that starts at `https://web.whatsapp.com/`, jiffy looks for:
