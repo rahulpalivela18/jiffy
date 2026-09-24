@@ -61,6 +61,7 @@
     if (rname==='gridcell' && e.querySelector('button,[role="button"]')) continue;
     const base={node:identity(e),role:rname,label:name(e)||rname,
       rect:{x:r.x,y:r.y,w:r.width,h:r.height}};
+    if (rname==='link' && e.href) base.href=e.href;
     for (const key of ['checked','selected','expanded']) {
       const value=e.getAttribute('aria-'+key);
       if (value!==null) base[key]=value;

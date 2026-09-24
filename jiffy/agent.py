@@ -146,7 +146,7 @@ class Agent:
             if state["status"] in {"done", "blocked"}:
                 raise ValueError("This run has stopped. Start a fresh run.")
             if len(state["decisions"]) >= self.max_steps * 2:
-                raise ValueError("Reached the run's model-call budget")
+                return self._stop("blocked", "Reached the run's model-call budget")
             state["decision"] = choose(
                 state["page"],
                 state["goal"],
@@ -234,12 +234,15 @@ class Agent:
                     else {}
                 )
                 context = field_context(
-                    state["goal"], action, page, state["history"], facts=facts
+                    state["goal"], action, page, state["history"], facts=facts, plan=self.plan
                 )
                 if self.pending_text and self.pending_text[0] == context:
                     _, text, helper = self.pending_text
                 else:
-                    text, helper = field_text(context)
+                    try:
+                        text, helper = field_text(context)
+                    except (ValueError, RuntimeError) as exc:
+                        return self._stop("needs_user", f"Text helper failed: {exc}")
                     self.pending_text = (context, text, helper)
                     state["text_calls"].append(
                         {**helper, "field": action["label"], "value": text}

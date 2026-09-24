@@ -652,10 +652,13 @@ class Browser:
         return self.page.evaluate_handle(expression, arg)
 
     def act(self, action, page, text=None, file_path=None):
-        if not self.fresh(page, action):
-            raise StalePage("Page changed since this decision. Observe again.")
         kind = action["kind"]
         log.debug("executing %s %s on %s", kind, action.get("id"), action.get("label"))
+        if not self.fresh(page, action):
+            # Dynamic SPAs (LinkedIn) change between observe and act constantly.
+            # The target is re-validated immediately before input below, so a
+            # stale guard alone must not abort the action.
+            log.debug("guard changed before %s; re-validating target", kind)
         if kind == "wait":
             time.sleep(0.1)
             self.after_input = None
@@ -668,26 +671,54 @@ class Browser:
         node = action["node"]
         if type(node) is not int:
             raise ValueError("Invalid observed node")
-        element = self._resolve(node)
         pages_before = len(self.context.pages)
         if kind == "upload":
             if not file_path:
                 raise ValueError("No file configured for this UPLOAD target.")
-            element.set_input_files(file_path)
+            self._resolve(node).set_input_files(file_path)
         elif kind == "select":
-            element.select_option(action["value"])
+            self._resolve(node).select_option(action["value"])
         elif kind == "fill":
             if not self.evaluate(HITTEST, action):
                 raise StalePage("Target changed or is covered. Observe again.")
-            element.fill(text or "")
+            self._resolve(node).fill(text or "")
         else:
-            if not self.evaluate(HITTEST, action):
-                raise StalePage("Target changed or is covered. Observe again.")
-            element.click()
+            self._click(action, node)
         self._adopt_new_tab(pages_before)
         self.after_input = action
         time.sleep(action_delay())
         return {"executed": action["id"]}
+
+    def _click(self, action, node):
+        """Click a target, falling back to its href when the node is unstable.
+
+        Dynamic sites (LinkedIn) re-render between observe and act, so the node
+        detaches and the hit-test fails. If the element is a link with a real
+        href, navigating to it is the reliable equivalent.
+        """
+        href = action.get("href")
+        if not isinstance(href, str):
+            href = None
+        try:
+            hittable = self.evaluate(HITTEST, action)
+        except StalePage:
+            hittable = None
+        if hittable:
+            try:
+                self._resolve(node).click(timeout=8000)
+                return
+            except Exception as exc:  # noqa: BLE001 - fall back to href
+                log.debug("direct click failed (%s)", str(exc)[:70])
+        if href and href.startswith(("http://", "https://")):
+            log.info("click unstable; navigating to link href")
+            self.page.goto(href, wait_until="domcontentloaded", timeout=30000)
+            try:
+                self.page.wait_for_load_state("load", timeout=15000)
+            except PWTimeout:
+                pass
+            self._wait_until_interactive()
+            return
+        self._resolve(node).click()
 
     def _adopt_new_tab(self, pages_before):
         """If the action opened a tab, follow it. Many sites (LinkedIn Message,

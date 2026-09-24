@@ -233,14 +233,18 @@ def choose(state, goal, history, model=None, skill=None, plan=None, milestone_in
     }
 
 
-def field_context(goal, action, page, history, facts=None):
-    return {
+def field_context(goal, action, page, history, facts=None, plan=None):
+    context = {
         "goal": goal,
         "field": {k: action.get(k) for k in ("label", "role", "value")},
         "page": {"title": page["title"], "text": page["text"][:6000]},
         "recent_actions": [{k: h.get(k) for k in ("action", "text")} for h in history[-6:]],
         "facts": facts or {},
     }
+    if plan:
+        context["exact_values"] = plan.get("exact_values") or {}
+        context["constraints"] = plan.get("constraints") or []
+    return context
 
 
 def _reasoning_payload(base):
